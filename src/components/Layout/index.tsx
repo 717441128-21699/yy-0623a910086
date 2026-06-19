@@ -8,6 +8,7 @@ import {
   LogoutOutlined,
   BellOutlined,
   SmileOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
@@ -26,6 +27,11 @@ const menuItems = [
     label: '总览看板',
   },
   {
+    key: '/review',
+    icon: <AlertOutlined />,
+    label: '病例复盘',
+  },
+  {
     key: '/feedback',
     icon: <MessageOutlined />,
     label: '反馈列表',
@@ -41,6 +47,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const getSelectedKey = () => {
     if (location.pathname.startsWith('/case')) return '/dashboard';
     return location.pathname === '/' ? '/dashboard' : location.pathname;
+  };
+
+  const getPageTitle = () => {
+    const key = getSelectedKey();
+    if (key === '/dashboard') return '总览看板';
+    if (key === '/review') return '病例复盘';
+    if (key === '/feedback') return '反馈列表';
+    return '正畸质控看板';
   };
 
   const userMenuItems = [
@@ -89,7 +103,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Header className={styles.header}>
           <div className={styles.headerLeft}>
             <span className={styles.pageTitle}>
-              {getSelectedKey() === '/dashboard' ? '总览看板' : '反馈列表'}
+              {getPageTitle()}
             </span>
           </div>
           <div className={styles.headerRight}>

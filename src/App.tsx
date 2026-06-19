@@ -6,6 +6,7 @@ import MainLayout from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import CaseDetail from '@/pages/CaseDetail';
 import Feedback from '@/pages/Feedback';
+import CaseReview from '@/pages/CaseReview';
 
 const themeConfig = {
   token: {
@@ -37,6 +38,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/case/:id" element={<CaseDetail />} />
               <Route path="/feedback" element={<Feedback />} />
+              <Route path="/review" element={<CaseReview />} />
             </Routes>
           </MainLayout>
         </Router>

@@ -103,3 +103,32 @@ export interface TrendDataItem {
   totalAttachments: number;
   reattachRate: number;
 }
+
+export interface CaseReview {
+  id: string;
+  patientId: string;
+  patientName: string;
+  reviewedAt: string;
+  reviewedBy: string;
+  note?: string;
+}
+
+export interface RiskPatient {
+  patientId: string;
+  patientName: string;
+  patientNo: string;
+  clinicId: string;
+  clinicName: string;
+  doctorId: string;
+  doctorName: string;
+  stage: PatientStage;
+  reattachCount: number;
+  totalAttachments: number;
+  pendingFeedbackCount: number;
+  hasPhotoRisk: boolean;
+  hasRemarkRisk: boolean;
+  riskScore: number;
+  latestRecordId?: string;
+  isReviewed: boolean;
+  reviewedAt?: string;
+}

@@ -56,10 +56,14 @@ const typeColors: Record<BondingType, string> = {
 
 const FeedbackPage: React.FC = () => {
   const navigate = useNavigate();
-  const [urlSearchParams] = useSearchParams();
+  const [urlSearchParams, setUrlSearchParams] = useSearchParams();
   const feedbacksList = useFeedbackStore((s) => s.feedbacks);
   const updateFeedbackStatus = useFeedbackStore((s) => s.updateFeedbackStatus);
   const [activeTab, setActiveTab] = useState<string>(urlSearchParams.get('tab') || 'all');
+  const [pagination, setPagination] = useState({
+    current: parseInt(urlSearchParams.get('page') || '1', 10),
+    pageSize: parseInt(urlSearchParams.get('pageSize') || '10', 10),
+  });
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [replyForm] = Form.useForm();
@@ -78,6 +82,29 @@ const FeedbackPage: React.FC = () => {
 
   const filteredFeedbacks =
     activeTab === 'all' ? feedbacksList : feedbacksList.filter((f) => f.status === activeTab);
+
+  const updateUrlParams = (updates: Record<string, string | number | undefined>) => {
+    const params = new URLSearchParams(urlSearchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === undefined || value === '') {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    setUrlSearchParams(params);
+  };
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setPagination((p) => ({ ...p, current: 1 }));
+    updateUrlParams({ tab: key, page: 1 });
+  };
+
+  const handlePaginationChange = (page: number, pageSize: number) => {
+    setPagination({ current: page, pageSize });
+    updateUrlParams({ page, pageSize });
+  };
 
   const columns = [
     {
@@ -184,7 +211,10 @@ const FeedbackPage: React.FC = () => {
             onClick={() => {
               const params = new URLSearchParams();
               params.set('highlightRecordId', record.recordId);
+              params.set('from', 'feedback');
               params.set('tab', activeTab);
+              params.set('page', String(pagination.current));
+              params.set('pageSize', String(pagination.pageSize));
               navigate(`/case/${record.patientId}?${params.toString()}`);
             }}
           >
@@ -298,15 +328,18 @@ const FeedbackPage: React.FC = () => {
       </Row>
 
       <Card className={styles.listCard} bordered={false}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className={styles.tabs} />
+        <Tabs activeKey={activeTab} onChange={handleTabChange} items={tabItems} className={styles.tabs} />
         <Table
           columns={columns}
           dataSource={filteredFeedbacks}
           rowKey="id"
           pagination={{
-            pageSize: 10,
+            current: pagination.current,
+            pageSize: pagination.pageSize,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 条反馈`,
+            onChange: handlePaginationChange,
+            onShowSizeChange: handlePaginationChange,
           }}
           size="middle"
           className={styles.table}
@@ -417,7 +450,10 @@ const FeedbackPage: React.FC = () => {
                   setDetailVisible(false);
                   const params = new URLSearchParams();
                   params.set('highlightRecordId', currentFeedback.recordId);
+                  params.set('from', 'feedback');
                   params.set('tab', activeTab);
+                  params.set('page', String(pagination.current));
+                  params.set('pageSize', String(pagination.pageSize));
                   navigate(`/case/${currentFeedback.patientId}?${params.toString()}`);
                 }}
               >

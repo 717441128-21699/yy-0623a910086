@@ -1,0 +1,180 @@
+.reviewPage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.filterSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filterTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1D2129;
+}
+
+.filterIcon {
+  color: #165DFF;
+  font-size: 20px;
+}
+
+.filterDesc {
+  flex: 1;
+  font-size: 13px;
+  color: #86909C;
+  min-width: 200px;
+}
+
+.tabRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #F2F3F5;
+}
+
+.statsRow {
+  margin-top: 0;
+}
+
+.statCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.statCard:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.statContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.statIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+}
+
+.statInfo {
+  flex: 1;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #86909C;
+  margin-bottom: 4px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1D2129;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  line-height: 1.2;
+}
+
+.listCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.patientCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1D2129;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.patientMeta {
+  font-size: 12px;
+  color: #86909C;
+}
+
+.reviewedIcon {
+  color: #00B42A;
+  font-size: 12px;
+}
+
+.riskScore {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+}
+
+.highRisk {
+  color: #F53F3F;
+}
+
+.medRisk {
+  color: #FF7D00;
+}
+
+.lowRisk {
+  color: #00B42A;
+}
+
+.reviewedRow {
+  background: #F7F8FA;
+  opacity: 0.7;
+}
+
+.reviewModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reviewPatient {
+  padding: 12px;
+  background: #F7F8FA;
+  border-radius: 6px;
+}
+
+.reviewPatientName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1D2129;
+  margin-bottom: 4px;
+}
+
+.reviewPatientMeta {
+  font-size: 13px;
+  color: #86909C;
+}
+
+.formLabel {
+  font-size: 13px;
+  color: #4E5969;
+  margin-bottom: 8px;
+}

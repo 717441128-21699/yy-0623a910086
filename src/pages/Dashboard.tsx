@@ -27,6 +27,7 @@ import {
   DownloadOutlined,
   CopyOutlined,
   BarChartOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { useNavigate } from 'react-router-dom';
@@ -54,6 +55,29 @@ const typeLabels: Record<string, string> = {
   checkup: '复诊检查',
 };
 
+const computeMissingRecords = (records: BondingRecord[]): number => {
+  let count = 0;
+  for (const r of records) {
+    const missingPhotos = r.photos.length === 0;
+    const missingRemark = !r.remark || r.remark.trim().length < 5;
+    if (missingPhotos || missingRemark) {
+      count++;
+    }
+  }
+  return count;
+};
+
+const getHighlightRecordForPatient = (patientId: string, records: BondingRecord[]): BondingRecord | undefined => {
+  const patientRecords = records.filter((r) => r.patientId === patientId);
+  if (patientRecords.length === 0) return undefined;
+  const sorted = [...patientRecords].sort((a, b) => {
+    const aScore = (b.reattachCount > 0 ? 100 : 0) + (b.photos.length === 0 ? 50 : 0) + (b.remark && b.remark.length < 5 ? 30 : 0);
+    const bScore = (a.reattachCount > 0 ? 100 : 0) + (a.photos.length === 0 ? 50 : 0) + (a.remark && a.remark.length < 5 ? 30 : 0);
+    return aScore - bScore;
+  });
+  return sorted[0];
+};
+
 const computeSummary = (
   filteredPatients: typeof patients,
   filteredRecords: typeof bondingRecords
@@ -67,7 +91,7 @@ const computeSummary = (
     const patientCount = activePatientIds.size;
     const totalAttachments = clinicRecords.reduce((s, r) => s + r.totalCount, 0);
     const reattachCount = clinicRecords.reduce((s, r) => s + r.reattachCount, 0);
-    const missingRecords = patientCount > 0 ? Math.floor(Math.random() * 2) : 0;
+    const missingRecords = computeMissingRecords(clinicRecords);
     const reattachRate =
       totalAttachments > 0
         ? Math.round((reattachCount / totalAttachments) * 10000) / 100
@@ -457,6 +481,11 @@ const Dashboard: React.FC = () => {
     const doctorDesc = doctor ? doctors.find((d) => d.id === doctor)?.name || '' : '全部医生';
     const stageDesc = stage ? stageOptions.find((s) => s.value === stage)?.label || '' : '全部阶段';
 
+    const filteredPatientIds = new Set(filteredPatients.map((p) => p.id));
+    const filteredPendingFeedbacks = feedbacksList.filter(
+      (f) => f.status === 'pending' && filteredPatientIds.has(f.patientId)
+    );
+
     let report = `正畸质控周报\n`;
     report += `${'='.repeat(40)}\n`;
     report += `生成时间：${dayjs().format('YYYY-MM-DD HH:mm')}\n`;
@@ -468,7 +497,7 @@ const Dashboard: React.FC = () => {
     report += `  重粘次数：${totalReattach} 次\n`;
     report += `  整体重粘率：${overallReattachRate}%\n`;
     report += `  缺失记录：${totalMissing} 条\n`;
-    report += `  待处理反馈：${pendingFeedbacks} 条\n\n`;
+    report += `  待处理反馈：${filteredPendingFeedbacks.length} 条\n\n`;
 
     report += `二、分院明细\n${'-'.repeat(30)}\n`;
     for (const row of summaryData) {
@@ -478,7 +507,61 @@ const Dashboard: React.FC = () => {
     }
     report += '\n';
 
-    report += `三、高风险病例\n${'-'.repeat(30)}\n`;
+    report += `三、医生汇总\n${'-'.repeat(30)}\n`;
+    const doctorStats: Record<string, { name: string; patientCount: number; totalAttachments: number; reattachCount: number; reattachRate: number }> = {};
+    for (const p of filteredPatients) {
+      if (!doctorStats[p.doctorId]) {
+        doctorStats[p.doctorId] = { name: p.doctorName, patientCount: 0, totalAttachments: 0, reattachCount: 0, reattachRate: 0 };
+      }
+      doctorStats[p.doctorId].patientCount++;
+      const pRecords = filteredRecords.filter((r) => r.patientId === p.id);
+      doctorStats[p.doctorId].totalAttachments += pRecords.reduce((s, r) => s + r.totalCount, 0);
+      doctorStats[p.doctorId].reattachCount += pRecords.reduce((s, r) => s + r.reattachCount, 0);
+    }
+    for (const ds of Object.values(doctorStats)) {
+      ds.reattachRate = ds.totalAttachments > 0 ? Math.round((ds.reattachCount / ds.totalAttachments) * 10000) / 100 : 0;
+    }
+    const sortedDoctors = Object.values(doctorStats).sort((a, b) => b.reattachRate - a.reattachRate);
+    if (sortedDoctors.length === 0) {
+      report += `  当前筛选范围内无医生数据\n`;
+    } else {
+      for (const ds of sortedDoctors) {
+        const flag = ds.reattachRate > 4 ? ' ⚠️' : '';
+        report += `  ${ds.name}${flag}\n`;
+        report += `    人数:${ds.patientCount}  附件:${ds.totalAttachments}  重粘:${ds.reattachCount}  重粘率:${ds.reattachRate}%\n`;
+      }
+    }
+    report += '\n';
+
+    report += `四、病例阶段汇总\n${'-'.repeat(30)}\n`;
+    const stageStats: Record<string, { label: string; patientCount: number; totalAttachments: number; reattachCount: number; reattachRate: number }> = {};
+    for (const p of filteredPatients) {
+      const label = stageOptions.find((s) => s.value === p.stage)?.label || p.stage;
+      if (!stageStats[p.stage]) {
+        stageStats[p.stage] = { label, patientCount: 0, totalAttachments: 0, reattachCount: 0, reattachRate: 0 };
+      }
+      stageStats[p.stage].patientCount++;
+      const pRecords = filteredRecords.filter((r) => r.patientId === p.id);
+      stageStats[p.stage].totalAttachments += pRecords.reduce((s, r) => s + r.totalCount, 0);
+      stageStats[p.stage].reattachCount += pRecords.reduce((s, r) => s + r.reattachCount, 0);
+    }
+    for (const ss of Object.values(stageStats)) {
+      ss.reattachRate = ss.totalAttachments > 0 ? Math.round((ss.reattachCount / ss.totalAttachments) * 10000) / 100 : 0;
+    }
+    const stageOrder = ['initial', 'middle', 'late', 'finishing'];
+    const sortedStages = Object.entries(stageStats).sort(([a], [b]) => stageOrder.indexOf(a) - stageOrder.indexOf(b));
+    if (sortedStages.length === 0) {
+      report += `  当前筛选范围内无阶段数据\n`;
+    } else {
+      for (const [, ss] of sortedStages) {
+        const flag = ss.reattachRate > 4 ? ' ⚠️' : '';
+        report += `  ${ss.label}${flag}\n`;
+        report += `    人数:${ss.patientCount}  附件:${ss.totalAttachments}  重粘:${ss.reattachCount}  重粘率:${ss.reattachRate}%\n`;
+      }
+    }
+    report += '\n';
+
+    report += `五、高风险病例\n${'-'.repeat(30)}\n`;
     const highRiskPatients = filteredPatients.filter((p) => p.reattachCount > 2);
     if (highRiskPatients.length === 0) {
       report += `  当前筛选范围内无高风险病例\n`;
@@ -490,20 +573,20 @@ const Dashboard: React.FC = () => {
     }
     report += '\n';
 
-    report += `四、待处理质控反馈\n${'-'.repeat(30)}\n`;
-    const pendingFbs = feedbacksList.filter((f) => f.status === 'pending');
-    if (pendingFbs.length === 0) {
-      report += `  无待处理反馈\n`;
+    report += `六、待处理质控反馈（仅当前筛选范围）\n${'-'.repeat(30)}\n`;
+    if (filteredPendingFeedbacks.length === 0) {
+      report += `  当前筛选范围内无待处理反馈\n`;
     } else {
-      for (const fb of pendingFbs) {
+      for (const fb of filteredPendingFeedbacks) {
         report += `  [${fb.clinicName}] ${fb.patientName} → ${fb.toDoctorName}\n`;
+        report += `    关联记录：${typeLabels[fb.recordType]}（${fb.recordDate}）\n`;
         report += `    ${fb.content.slice(0, 60)}${fb.content.length > 60 ? '...' : ''}\n`;
         report += `    截止：${fb.deadline || '未设定'}\n`;
       }
     }
 
     return report;
-  }, [appliedFilters, totalPatients, totalAttachments, totalReattach, totalMissing, overallReattachRate, summaryData, filteredPatients, feedbacksList, pendingFeedbacks]);
+  }, [appliedFilters, totalPatients, totalAttachments, totalReattach, totalMissing, overallReattachRate, summaryData, filteredPatients, filteredRecords, feedbacksList]);
 
   const handleCopyReport = useCallback(() => {
     const report = generateReport();
@@ -523,60 +606,6 @@ const Dashboard: React.FC = () => {
     URL.revokeObjectURL(url);
     message.success('周报已下载');
   }, [generateReport]);
-
-  const dayDrawerColumns = [
-    {
-      title: '患者',
-      dataIndex: 'patientName',
-      key: 'patientName',
-      width: 100,
-    },
-    {
-      title: '类型',
-      dataIndex: 'type',
-      key: 'type',
-      width: 100,
-      render: (type: string) => <Tag color={type === 'initial' ? 'blue' : type === 'reattach' ? 'orange' : 'green'}>{typeLabels[type]}</Tag>,
-    },
-    {
-      title: '操作医生',
-      dataIndex: 'doctorName',
-      key: 'doctorName',
-      width: 100,
-    },
-    {
-      title: '附件数',
-      dataIndex: 'totalCount',
-      key: 'totalCount',
-      width: 80,
-    },
-    {
-      title: '重粘数',
-      dataIndex: 'reattachCount',
-      key: 'reattachCount',
-      width: 80,
-      render: (val: number) => val > 0 ? <span style={{ color: '#F53F3F', fontWeight: 600 }}>{val}</span> : val,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 80,
-      render: (_: unknown, record: BondingRecord) => (
-        <Button
-          type="link"
-          size="small"
-          onClick={() => {
-            setDayDrawerVisible(false);
-            const params = new URLSearchParams();
-            params.set('highlightRecordId', record.id);
-            navigate(`/case/${record.patientId}?${params.toString()}`);
-          }}
-        >
-          查看
-        </Button>
-      ),
-    },
-  ];
 
   const trendDateLabel = appliedFilters.dateStart && appliedFilters.dateEnd
     ? `${appliedFilters.dateStart} ~ ${appliedFilters.dateEnd}`
@@ -740,9 +769,26 @@ const Dashboard: React.FC = () => {
             className={styles.tableCard}
             bordered={false}
             extra={
-              <Button icon={<BarChartOutlined />} onClick={() => setReportVisible(true)}>
-                质控周报
-              </Button>
+              <Space size="small">
+                <Button
+                  icon={<AlertOutlined />}
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (appliedFilters.clinic) params.set('clinic', appliedFilters.clinic);
+                    if (appliedFilters.doctor) params.set('doctor', appliedFilters.doctor);
+                    if (appliedFilters.stage) params.set('stage', appliedFilters.stage);
+                    if (appliedFilters.dateStart) params.set('dateStart', appliedFilters.dateStart);
+                    if (appliedFilters.dateEnd) params.set('dateEnd', appliedFilters.dateEnd);
+                    params.set('reviewed', 'pending');
+                    navigate(`/review?${params.toString()}`);
+                  }}
+                >
+                  病例复盘
+                </Button>
+                <Button icon={<BarChartOutlined />} onClick={() => setReportVisible(true)}>
+                  质控周报
+                </Button>
+              </Space>
             }
           >
             <Table
@@ -796,25 +842,113 @@ const Dashboard: React.FC = () => {
         title={`${dayDrawerData.date} 粘接记录明细`}
         open={dayDrawerVisible}
         onClose={() => setDayDrawerVisible(false)}
-        width={680}
+        width={720}
       >
         {dayDrawerData.records.length > 0 ? (
           <>
             <div className={styles.drawerSummary}>
-              <Space size={24}>
+              <Space size={24} wrap>
+                <span>涉及门诊：<b>{new Set(dayDrawerData.records.map((r) => patients.find((p) => p.id === r.patientId)?.clinicId)).size}</b> 家</span>
                 <span>涉及患者：<b>{new Set(dayDrawerData.records.map((r) => r.patientId)).size}</b> 人</span>
                 <span>粘接记录：<b>{dayDrawerData.records.length}</b> 条</span>
                 <span>附件总数：<b>{dayDrawerData.records.reduce((s, r) => s + r.totalCount, 0)}</b> 颗</span>
                 <span>重粘：<b style={{ color: '#F53F3F' }}>{dayDrawerData.records.reduce((s, r) => s + r.reattachCount, 0)}</b> 次</span>
               </Space>
             </div>
-            <Table
-              columns={dayDrawerColumns}
-              dataSource={dayDrawerData.records}
-              rowKey="id"
-              size="small"
-              pagination={false}
-            />
+            {clinics
+              .filter((c) => dayDrawerData.records.some((r) => {
+                const p = patients.find((pp) => pp.id === r.patientId);
+                return p?.clinicId === c.id;
+              }))
+              .map((clinic) => {
+                const clinicRecords = dayDrawerData.records.filter((r) => {
+                  const p = patients.find((pp) => pp.id === r.patientId);
+                  return p?.clinicId === clinic.id;
+                });
+                const patientCount = new Set(clinicRecords.map((r) => r.patientId)).size;
+                return (
+                  <div key={clinic.id} style={{ marginBottom: 24 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: '#F2F3F5',
+                      borderRadius: 4,
+                      marginBottom: 12,
+                    }}>
+                      <span style={{ fontWeight: 600, color: '#1D2129' }}>{clinic.name}</span>
+                      <span style={{ fontSize: 12, color: '#86909C' }}>
+                        {patientCount} 位患者 · {clinicRecords.length} 条记录
+                      </span>
+                    </div>
+                    <Table
+                      columns={[
+                        {
+                          title: '患者',
+                          dataIndex: 'patientName',
+                          key: 'patientName',
+                          width: 100,
+                        },
+                        {
+                          title: '类型',
+                          dataIndex: 'type',
+                          key: 'type',
+                          width: 100,
+                          render: (type: string) => <Tag color={type === 'initial' ? 'blue' : type === 'reattach' ? 'orange' : 'green'}>{typeLabels[type]}</Tag>,
+                        },
+                        {
+                          title: '操作医生',
+                          dataIndex: 'doctorName',
+                          key: 'doctorName',
+                          width: 100,
+                        },
+                        {
+                          title: '附件数',
+                          dataIndex: 'totalCount',
+                          key: 'totalCount',
+                          width: 70,
+                        },
+                        {
+                          title: '重粘数',
+                          dataIndex: 'reattachCount',
+                          key: 'reattachCount',
+                          width: 70,
+                          render: (val: number) => val > 0 ? <span style={{ color: '#F53F3F', fontWeight: 600 }}>{val}</span> : val,
+                        },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          width: 80,
+                          render: (_: unknown, record: BondingRecord) => {
+                            const highlight = getHighlightRecordForPatient(record.patientId, dayDrawerData.records);
+                            const targetId = highlight?.id || record.id;
+                            return (
+                              <Button
+                                type="link"
+                                size="small"
+                                onClick={() => {
+                                  setDayDrawerVisible(false);
+                                  const params = new URLSearchParams();
+                                  params.set('highlightRecordId', targetId);
+                                  params.set('from', 'dashboard');
+                                  navigate(`/case/${record.patientId}?${params.toString()}`);
+                                }}
+                              >
+                                查看
+                              </Button>
+                            );
+                          },
+                        },
+                      ]}
+                      dataSource={clinicRecords}
+                      rowKey="id"
+                      size="small"
+                      pagination={false}
+                    />
+                  </div>
+                );
+              })}
           </>
         ) : (
           <div className={styles.drawerEmpty}>当日无粘接记录</div>

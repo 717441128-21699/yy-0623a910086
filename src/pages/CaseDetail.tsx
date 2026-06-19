@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
@@ -172,13 +172,36 @@ const CaseDetail: React.FC = () => {
     );
   }
 
+  const handleBack = useCallback(() => {
+    const from = searchParams.get('from');
+    if (from === 'feedback') {
+      const params = new URLSearchParams();
+      const tab = searchParams.get('tab');
+      const page = searchParams.get('page');
+      const pageSize = searchParams.get('pageSize');
+      if (tab) params.set('tab', tab);
+      if (page) params.set('page', page);
+      if (pageSize) params.set('pageSize', pageSize);
+      navigate(`/feedback${params.toString() ? `?${params.toString()}` : ''}`);
+    } else if (from === 'review') {
+      const params = new URLSearchParams();
+      ['clinic', 'doctor', 'stage', 'dateStart', 'dateEnd', 'reviewed'].forEach((key) => {
+        const val = searchParams.get(key);
+        if (val) params.set(key, val);
+      });
+      navigate(`/review${params.toString() ? `?${params.toString()}` : ''}`);
+    } else {
+      navigate(-1);
+    }
+  }, [navigate, searchParams]);
+
   return (
     <div className={styles.caseDetail}>
       <div className={styles.pageHeader}>
         <Button
           type="text"
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className={styles.backBtn}
         >
           返回列表
