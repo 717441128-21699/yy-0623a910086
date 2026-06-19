@@ -183,6 +183,49 @@
   color: #F53F3F !important;
 }
 
+.chartHint {
+  font-size: 12px;
+  color: #86909C;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.drawerSummary {
+  padding: 12px 16px;
+  background: #F7F8FA;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #4E5969;
+}
+
+.drawerSummary b {
+  color: #1D2129;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.drawerEmpty {
+  text-align: center;
+  padding: 60px 0;
+  color: #86909C;
+  font-size: 14px;
+}
+
+.reportPreview {
+  background: #F7F8FA;
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #1D2129;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 480px;
+  overflow-y: auto;
+  margin: 0;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;

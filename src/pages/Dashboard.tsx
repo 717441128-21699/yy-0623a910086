@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Card,
   Row,
@@ -10,6 +10,9 @@ import {
   Tag,
   Space,
   Divider,
+  Modal,
+  Drawer,
+  message,
 } from 'antd';
 import {
   UserOutlined,
@@ -21,15 +24,19 @@ import {
   EyeOutlined,
   SearchOutlined,
   FilterOutlined,
+  DownloadOutlined,
+  CopyOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import type { SummaryData, TrendDataItem, PatientStage } from '@/types';
+import type { SummaryData, TrendDataItem, PatientStage, BondingRecord } from '@/types';
 import { clinics } from '@/mock/clinics';
 import { doctors } from '@/mock/doctors';
 import { patients } from '@/mock/patients';
 import { bondingRecords } from '@/mock/records';
+import { useFeedbackStore } from '@/store/feedbackStore';
 import styles from './Dashboard.module.css';
 
 const { RangePicker } = DatePicker;
@@ -40,6 +47,12 @@ const stageOptions: { value: PatientStage; label: string }[] = [
   { value: 'late', label: '后期精细' },
   { value: 'finishing', label: '精调结束' },
 ];
+
+const typeLabels: Record<string, string> = {
+  initial: '初次粘接',
+  reattach: '重新粘接',
+  checkup: '复诊检查',
+};
 
 const computeSummary = (
   filteredPatients: typeof patients,
@@ -60,7 +73,6 @@ const computeSummary = (
         ? Math.round((reattachCount / totalAttachments) * 10000) / 100
         : 0;
     const isAbnormal = reattachRate > 4 || missingRecords >= 2;
-
     return {
       date: dayjs().format('YYYY-MM-DD'),
       clinicId: clinic.id,
@@ -77,13 +89,24 @@ const computeSummary = (
 
 const computeTrend = (
   filteredRecords: typeof bondingRecords,
-  days: number
+  dateStart: string,
+  dateEnd: string
 ): TrendDataItem[] => {
   const data: TrendDataItem[] = [];
-  const today = dayjs('2025-06-20');
+  let start: dayjs.Dayjs;
+  let end: dayjs.Dayjs;
 
-  for (let i = days - 1; i >= 0; i--) {
-    const date = today.subtract(i, 'day').format('YYYY-MM-DD');
+  if (dateStart && dateEnd) {
+    start = dayjs(dateStart);
+    end = dayjs(dateEnd);
+  } else {
+    end = dayjs('2025-06-20');
+    start = end.subtract(29, 'day');
+  }
+
+  const totalDays = end.diff(start, 'day') + 1;
+  for (let i = 0; i < totalDays; i++) {
+    const date = start.add(i, 'day').format('YYYY-MM-DD');
     const dayRecords = filteredRecords.filter((r) => r.date === date);
     const patientCount = new Set(dayRecords.map((r) => r.patientId)).size;
     const totalAttachments = dayRecords.reduce((s, r) => s + r.totalCount, 0);
@@ -100,11 +123,12 @@ const computeTrend = (
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const feedbacksList = useFeedbackStore((s) => s.feedbacks);
+  const chartRef = useRef<any>(null);
   const [selectedClinic, setSelectedClinic] = useState<string>('');
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<string>('');
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [trendDays, setTrendDays] = useState<number>(7);
   const [appliedFilters, setAppliedFilters] = useState<{
     clinic: string;
     doctor: string;
@@ -112,6 +136,12 @@ const Dashboard: React.FC = () => {
     dateStart: string;
     dateEnd: string;
   }>({ clinic: '', doctor: '', stage: '', dateStart: '', dateEnd: '' });
+  const [dayDrawerVisible, setDayDrawerVisible] = useState(false);
+  const [dayDrawerData, setDayDrawerData] = useState<{
+    date: string;
+    records: BondingRecord[];
+  }>({ date: '', records: [] });
+  const [reportVisible, setReportVisible] = useState(false);
 
   const filteredPatients = useMemo(() => {
     let result = [...patients];
@@ -124,10 +154,9 @@ const Dashboard: React.FC = () => {
 
   const filteredRecords = useMemo(() => {
     let result = [...bondingRecords];
-    const { doctor, dateStart, dateEnd } = appliedFilters;
+    const { dateStart, dateEnd } = appliedFilters;
     const filteredPatientIds = filteredPatients.map((p) => p.id);
     result = result.filter((r) => filteredPatientIds.includes(r.patientId));
-    if (doctor) result = result.filter((r) => r.doctorId === doctor);
     if (dateStart) result = result.filter((r) => r.date >= dateStart);
     if (dateEnd) result = result.filter((r) => r.date <= dateEnd);
     return result;
@@ -139,8 +168,8 @@ const Dashboard: React.FC = () => {
   );
 
   const trendData = useMemo(
-    () => computeTrend(filteredRecords, trendDays),
-    [filteredRecords, trendDays]
+    () => computeTrend(filteredRecords, appliedFilters.dateStart, appliedFilters.dateEnd),
+    [filteredRecords, appliedFilters.dateStart, appliedFilters.dateEnd]
   );
 
   const totalPatients = summaryData.reduce((sum, item) => sum + item.patientCount, 0);
@@ -188,6 +217,46 @@ const Dashboard: React.FC = () => {
       }
     }
   };
+
+  const handleChartClick = useCallback((params: any) => {
+    if (params.componentType === 'series' && params.seriesType === 'bar') {
+      const dataIndex = params.dataIndex;
+      const trendItem = trendData[dataIndex];
+      if (trendItem) {
+        const dayRecords = filteredRecords.filter((r) => r.date === trendItem.date);
+        setDayDrawerData({ date: trendItem.date, records: dayRecords });
+        setDayDrawerVisible(true);
+      }
+    }
+  }, [trendData, filteredRecords]);
+
+  const getTargetPatientForClinic = useCallback((clinicId: string) => {
+    const clinicPatients = filteredPatients.filter((p) => p.clinicId === clinicId);
+    const clinicRecords = filteredRecords.filter((r) =>
+      clinicPatients.some((p) => p.id === r.patientId)
+    );
+    const recordsByPatient: Record<string, { count: number; reattach: number; latestRecord?: BondingRecord }> = {};
+    for (const r of clinicRecords) {
+      if (!recordsByPatient[r.patientId]) {
+        recordsByPatient[r.patientId] = { count: 0, reattach: 0 };
+      }
+      recordsByPatient[r.patientId].count++;
+      recordsByPatient[r.patientId].reattach += r.reattachCount;
+      if (!recordsByPatient[r.patientId].latestRecord || r.date > recordsByPatient[r.patientId].latestRecord!.date) {
+        recordsByPatient[r.patientId].latestRecord = r;
+      }
+    }
+    const sorted = clinicPatients
+      .map((p) => ({
+        patient: p,
+        stats: recordsByPatient[p.id] || { count: 0, reattach: 0, latestRecord: undefined },
+      }))
+      .sort((a, b) => {
+        if (b.stats.reattach !== a.stats.reattach) return b.stats.reattach - a.stats.reattach;
+        return b.stats.count - a.stats.count;
+      });
+    return sorted.length > 0 ? sorted[0] : null;
+  }, [filteredPatients, filteredRecords]);
 
   const columns = [
     {
@@ -260,15 +329,22 @@ const Dashboard: React.FC = () => {
       key: 'action',
       width: 120,
       render: (_: unknown, record: SummaryData) => {
-        const targetPatient = filteredPatients.find((p) => p.clinicId === record.clinicId);
+        const target = getTargetPatientForClinic(record.clinicId);
+        const highlightRecordId = target?.stats.latestRecord?.id;
         return (
           <Space size="small">
             <Button
               type="link"
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => targetPatient && navigate(`/case/${targetPatient.id}`)}
-              disabled={!targetPatient}
+              onClick={() => {
+                if (target) {
+                  const params = new URLSearchParams();
+                  if (highlightRecordId) params.set('highlightRecordId', highlightRecordId);
+                  navigate(`/case/${target.patient.id}?${params.toString()}`);
+                }
+              }}
+              disabled={!target}
             >
               查看病例
             </Button>
@@ -328,7 +404,7 @@ const Dashboard: React.FC = () => {
         data: trendData.map((item) => item.patientCount),
         itemStyle: {
           color: {
-            type: 'linear',
+            type: 'linear' as const,
             x: 0,
             y: 0,
             x2: 0,
@@ -340,7 +416,7 @@ const Dashboard: React.FC = () => {
           },
           borderRadius: [4, 4, 0, 0],
         },
-        barWidth: 24,
+        barWidth: trendData.length > 15 ? 12 : 24,
       },
       {
         name: '重粘率',
@@ -349,12 +425,12 @@ const Dashboard: React.FC = () => {
         data: trendData.map((item) => item.reattachRate),
         smooth: true,
         symbol: 'circle',
-        symbolSize: 8,
+        symbolSize: trendData.length > 15 ? 4 : 8,
         lineStyle: { color: '#F53F3F', width: 2 },
         itemStyle: { color: '#F53F3F' },
         areaStyle: {
           color: {
-            type: 'linear',
+            type: 'linear' as const,
             x: 0,
             y: 0,
             x2: 0,
@@ -371,6 +447,140 @@ const Dashboard: React.FC = () => {
 
   const hasActiveFilter =
     appliedFilters.clinic || appliedFilters.doctor || appliedFilters.stage || appliedFilters.dateStart || appliedFilters.dateEnd;
+
+  const pendingFeedbacks = feedbacksList.filter((f) => f.status === 'pending').length;
+
+  const generateReport = useCallback(() => {
+    const { clinic, doctor, stage, dateStart, dateEnd } = appliedFilters;
+    const dateDesc = dateStart && dateEnd ? `${dateStart} ~ ${dateEnd}` : '近30天';
+    const clinicDesc = clinic ? clinics.find((c) => c.id === clinic)?.name || '' : '全部门诊';
+    const doctorDesc = doctor ? doctors.find((d) => d.id === doctor)?.name || '' : '全部医生';
+    const stageDesc = stage ? stageOptions.find((s) => s.value === stage)?.label || '' : '全部阶段';
+
+    let report = `正畸质控周报\n`;
+    report += `${'='.repeat(40)}\n`;
+    report += `生成时间：${dayjs().format('YYYY-MM-DD HH:mm')}\n`;
+    report += `筛选范围：${dateDesc} | ${clinicDesc} | ${doctorDesc} | ${stageDesc}\n\n`;
+
+    report += `一、总览数据\n${'-'.repeat(30)}\n`;
+    report += `  粘接人数：${totalPatients} 人\n`;
+    report += `  附件颗数：${totalAttachments} 颗\n`;
+    report += `  重粘次数：${totalReattach} 次\n`;
+    report += `  整体重粘率：${overallReattachRate}%\n`;
+    report += `  缺失记录：${totalMissing} 条\n`;
+    report += `  待处理反馈：${pendingFeedbacks} 条\n\n`;
+
+    report += `二、分院明细\n${'-'.repeat(30)}\n`;
+    for (const row of summaryData) {
+      const flag = row.isAbnormal ? ' ⚠️ 异常' : '';
+      report += `  ${row.clinicName}${flag}\n`;
+      report += `    人数:${row.patientCount}  附件:${row.totalAttachments}  重粘:${row.reattachCount}  重粘率:${row.reattachRate}%  缺失:${row.missingRecords}\n`;
+    }
+    report += '\n';
+
+    report += `三、高风险病例\n${'-'.repeat(30)}\n`;
+    const highRiskPatients = filteredPatients.filter((p) => p.reattachCount > 2);
+    if (highRiskPatients.length === 0) {
+      report += `  当前筛选范围内无高风险病例\n`;
+    } else {
+      for (const p of highRiskPatients) {
+        report += `  ${p.name}（${p.patientNo}）- ${p.clinicName} - ${p.doctorName}\n`;
+        report += `    阶段:${stageOptions.find((s) => s.value === p.stage)?.label}  累计附件:${p.totalAttachments}  重粘:${p.reattachCount}次\n`;
+      }
+    }
+    report += '\n';
+
+    report += `四、待处理质控反馈\n${'-'.repeat(30)}\n`;
+    const pendingFbs = feedbacksList.filter((f) => f.status === 'pending');
+    if (pendingFbs.length === 0) {
+      report += `  无待处理反馈\n`;
+    } else {
+      for (const fb of pendingFbs) {
+        report += `  [${fb.clinicName}] ${fb.patientName} → ${fb.toDoctorName}\n`;
+        report += `    ${fb.content.slice(0, 60)}${fb.content.length > 60 ? '...' : ''}\n`;
+        report += `    截止：${fb.deadline || '未设定'}\n`;
+      }
+    }
+
+    return report;
+  }, [appliedFilters, totalPatients, totalAttachments, totalReattach, totalMissing, overallReattachRate, summaryData, filteredPatients, feedbacksList, pendingFeedbacks]);
+
+  const handleCopyReport = useCallback(() => {
+    const report = generateReport();
+    navigator.clipboard.writeText(report).then(() => {
+      message.success('周报已复制到剪贴板');
+    });
+  }, [generateReport]);
+
+  const handleDownloadReport = useCallback(() => {
+    const report = generateReport();
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `正畸质控周报_${dayjs().format('YYYYMMDD')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success('周报已下载');
+  }, [generateReport]);
+
+  const dayDrawerColumns = [
+    {
+      title: '患者',
+      dataIndex: 'patientName',
+      key: 'patientName',
+      width: 100,
+    },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      key: 'type',
+      width: 100,
+      render: (type: string) => <Tag color={type === 'initial' ? 'blue' : type === 'reattach' ? 'orange' : 'green'}>{typeLabels[type]}</Tag>,
+    },
+    {
+      title: '操作医生',
+      dataIndex: 'doctorName',
+      key: 'doctorName',
+      width: 100,
+    },
+    {
+      title: '附件数',
+      dataIndex: 'totalCount',
+      key: 'totalCount',
+      width: 80,
+    },
+    {
+      title: '重粘数',
+      dataIndex: 'reattachCount',
+      key: 'reattachCount',
+      width: 80,
+      render: (val: number) => val > 0 ? <span style={{ color: '#F53F3F', fontWeight: 600 }}>{val}</span> : val,
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: BondingRecord) => (
+        <Button
+          type="link"
+          size="small"
+          onClick={() => {
+            setDayDrawerVisible(false);
+            const params = new URLSearchParams();
+            params.set('highlightRecordId', record.id);
+            navigate(`/case/${record.patientId}?${params.toString()}`);
+          }}
+        >
+          查看
+        </Button>
+      ),
+    },
+  ];
+
+  const trendDateLabel = appliedFilters.dateStart && appliedFilters.dateEnd
+    ? `${appliedFilters.dateStart} ~ ${appliedFilters.dateEnd}`
+    : '近30天';
 
   return (
     <div className={styles.dashboard}>
@@ -530,22 +740,9 @@ const Dashboard: React.FC = () => {
             className={styles.tableCard}
             bordered={false}
             extra={
-              <Space>
-                <Button
-                  size="small"
-                  type={trendDays === 7 ? 'primary' : 'default'}
-                  onClick={() => setTrendDays(7)}
-                >
-                  近7天
-                </Button>
-                <Button
-                  size="small"
-                  type={trendDays === 30 ? 'primary' : 'default'}
-                  onClick={() => setTrendDays(30)}
-                >
-                  近30天
-                </Button>
-              </Space>
+              <Button icon={<BarChartOutlined />} onClick={() => setReportVisible(true)}>
+                质控周报
+              </Button>
             }
           >
             <Table
@@ -559,8 +756,13 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="粘接趋势" className={styles.chartCard} bordered={false}>
-            <ReactECharts option={getTrendOption()} style={{ height: 320 }} />
+          <Card title={`粘接趋势 (${trendDateLabel})`} className={styles.chartCard} bordered={false}>
+            <ReactECharts
+              ref={chartRef}
+              option={getTrendOption()}
+              style={{ height: 320 }}
+              onEvents={{ click: handleChartClick }}
+            />
             <Divider style={{ margin: '16px 0' }} />
             <div className={styles.legendInfo}>
               <div className={styles.legendItem}>
@@ -582,10 +784,62 @@ const Dashboard: React.FC = () => {
                   {overallReattachRate}%
                 </span>
               </div>
+              <div className={styles.chartHint}>
+                点击柱状图可查看当日详情
+              </div>
             </div>
           </Card>
         </Col>
       </Row>
+
+      <Drawer
+        title={`${dayDrawerData.date} 粘接记录明细`}
+        open={dayDrawerVisible}
+        onClose={() => setDayDrawerVisible(false)}
+        width={680}
+      >
+        {dayDrawerData.records.length > 0 ? (
+          <>
+            <div className={styles.drawerSummary}>
+              <Space size={24}>
+                <span>涉及患者：<b>{new Set(dayDrawerData.records.map((r) => r.patientId)).size}</b> 人</span>
+                <span>粘接记录：<b>{dayDrawerData.records.length}</b> 条</span>
+                <span>附件总数：<b>{dayDrawerData.records.reduce((s, r) => s + r.totalCount, 0)}</b> 颗</span>
+                <span>重粘：<b style={{ color: '#F53F3F' }}>{dayDrawerData.records.reduce((s, r) => s + r.reattachCount, 0)}</b> 次</span>
+              </Space>
+            </div>
+            <Table
+              columns={dayDrawerColumns}
+              dataSource={dayDrawerData.records}
+              rowKey="id"
+              size="small"
+              pagination={false}
+            />
+          </>
+        ) : (
+          <div className={styles.drawerEmpty}>当日无粘接记录</div>
+        )}
+      </Drawer>
+
+      <Modal
+        title="质控周报"
+        open={reportVisible}
+        onCancel={() => setReportVisible(false)}
+        width={680}
+        footer={
+          <Space>
+            <Button icon={<CopyOutlined />} onClick={handleCopyReport}>
+              复制文本
+            </Button>
+            <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadReport}>
+              下载文件
+            </Button>
+            <Button onClick={() => setReportVisible(false)}>关闭</Button>
+          </Space>
+        }
+      >
+        <pre className={styles.reportPreview}>{generateReport()}</pre>
+      </Modal>
     </div>
   );
 };

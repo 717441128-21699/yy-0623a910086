@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Tabs,
@@ -56,9 +56,10 @@ const typeColors: Record<BondingType, string> = {
 
 const FeedbackPage: React.FC = () => {
   const navigate = useNavigate();
+  const [urlSearchParams] = useSearchParams();
   const feedbacksList = useFeedbackStore((s) => s.feedbacks);
   const updateFeedbackStatus = useFeedbackStore((s) => s.updateFeedbackStatus);
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>(urlSearchParams.get('tab') || 'all');
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [replyForm] = Form.useForm();
@@ -180,7 +181,12 @@ const FeedbackPage: React.FC = () => {
             type="link"
             size="small"
             icon={<FileTextOutlined />}
-            onClick={() => navigate(`/case/${record.patientId}`)}
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set('highlightRecordId', record.recordId);
+              params.set('tab', activeTab);
+              navigate(`/case/${record.patientId}?${params.toString()}`);
+            }}
           >
             病例
           </Button>
@@ -409,10 +415,13 @@ const FeedbackPage: React.FC = () => {
                 icon={<FileTextOutlined />}
                 onClick={() => {
                   setDetailVisible(false);
-                  navigate(`/case/${currentFeedback.patientId}`);
+                  const params = new URLSearchParams();
+                  params.set('highlightRecordId', currentFeedback.recordId);
+                  params.set('tab', activeTab);
+                  navigate(`/case/${currentFeedback.patientId}?${params.toString()}`);
                 }}
               >
-                查看完整病例 <ArrowRightOutlined />
+                查看关联记录 <ArrowRightOutlined />
               </Button>
             </div>
           </div>

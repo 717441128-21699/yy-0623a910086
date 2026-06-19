@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Card,
   Tag,
@@ -72,6 +72,7 @@ const photoAngleLabels: Record<string, string> = {
 const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const addFeedback = useFeedbackStore((s) => s.addFeedback);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [records, setRecords] = useState<BondingRecord[]>([]);
@@ -86,12 +87,20 @@ const CaseDetail: React.FC = () => {
         setPatient(p);
         const r = getRecordsByPatientId(id);
         setRecords(r);
+        const highlightId = searchParams.get('highlightRecordId');
+        if (highlightId) {
+          const highlighted = r.find((rec) => rec.id === highlightId);
+          if (highlighted) {
+            setSelectedRecord(highlighted);
+            return;
+          }
+        }
         if (r.length > 0) {
           setSelectedRecord(r[0]);
         }
       }
     }
-  }, [id]);
+  }, [id, searchParams]);
 
   const handleSubmitFeedback = () => {
     form.validateFields().then((values) => {
