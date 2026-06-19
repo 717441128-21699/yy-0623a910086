@@ -11,12 +11,9 @@ import {
   Modal,
   Form,
   Input,
-  Select,
   message,
   Row,
   Col,
-  Statistic,
-  DatePicker,
 } from 'antd';
 import {
   UserOutlined,
@@ -32,12 +29,11 @@ import {
   SendOutlined,
 } from '@ant-design/icons';
 import type { Feedback, FeedbackStatus } from '@/types';
-import { feedbacks } from '@/mock/feedbacks';
+import { useFeedbackStore } from '@/store/feedbackStore';
 import styles from './Feedback.module.css';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
-const { Option } = Select;
 
 const statusConfig: Record<FeedbackStatus, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: '待处理', color: 'orange', icon: <ClockCircleOutlined /> },
@@ -46,17 +42,18 @@ const statusConfig: Record<FeedbackStatus, { label: string; color: string; icon:
   rejected: { label: '已驳回', color: 'red', icon: <CloseCircleOutlined /> },
 };
 
-const Feedback: React.FC = () => {
+const FeedbackPage: React.FC = () => {
   const navigate = useNavigate();
+  const feedbacksList = useFeedbackStore((s) => s.feedbacks);
+  const updateFeedbackStatus = useFeedbackStore((s) => s.updateFeedbackStatus);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [replyForm] = Form.useForm();
-  const [feedbacksList, setFeedbacksList] = useState<Feedback[]>(feedbacks);
 
-  const pendingCount = feedbacksList.filter(f => f.status === 'pending').length;
-  const processingCount = feedbacksList.filter(f => f.status === 'processing').length;
-  const completedCount = feedbacksList.filter(f => f.status === 'completed').length;
+  const pendingCount = feedbacksList.filter((f) => f.status === 'pending').length;
+  const processingCount = feedbacksList.filter((f) => f.status === 'processing').length;
+  const completedCount = feedbacksList.filter((f) => f.status === 'completed').length;
 
   const tabItems = [
     { key: 'all', label: `全部 (${feedbacksList.length})` },
@@ -66,9 +63,8 @@ const Feedback: React.FC = () => {
     { key: 'rejected', label: '已驳回' },
   ];
 
-  const filteredFeedbacks = activeTab === 'all'
-    ? feedbacksList
-    : feedbacksList.filter(f => f.status === activeTab);
+  const filteredFeedbacks =
+    activeTab === 'all' ? feedbacksList : feedbacksList.filter((f) => f.status === activeTab);
 
   const columns = [
     {
@@ -91,9 +87,7 @@ const Feedback: React.FC = () => {
       dataIndex: 'content',
       key: 'content',
       ellipsis: true,
-      render: (text: string) => (
-        <span className={styles.contentText}>{text}</span>
-      ),
+      render: (text: string) => <span className={styles.contentText}>{text}</span>,
     },
     {
       title: '分派给',
@@ -133,7 +127,7 @@ const Feedback: React.FC = () => {
       width: 120,
       render: (deadline: string | undefined, record: Feedback) => {
         if (!deadline) return '-';
-        const isOverdue = record.status !== 'completed' && dayjs(deadline).isBefore(dayjs());
+        const isOverdue = record.status !== 'completed' && record.status !== 'rejected' && dayjs(deadline).isBefore(dayjs());
         return (
           <span className={isOverdue ? styles.overdueText : ''}>
             {deadline}
@@ -175,19 +169,26 @@ const Feedback: React.FC = () => {
   };
 
   const handleReply = () => {
-    replyForm.validateFields().then(values => {
+    if (!selectedFeedback) return;
+    replyForm.validateFields().then((values) => {
+      updateFeedbackStatus(selectedFeedback.id, 'processing', values.reply);
       message.success('回复已提交');
       setDetailVisible(false);
       replyForm.resetFields();
+      setSelectedFeedback(null);
     });
   };
 
   const handleApprove = () => {
+    if (!selectedFeedback) return;
+    updateFeedbackStatus(selectedFeedback.id, 'completed');
     message.success('已确认完成');
     setDetailVisible(false);
+    setSelectedFeedback(null);
   };
 
   const handleReject = () => {
+    if (!selectedFeedback) return;
     Modal.confirm({
       title: '驳回补正',
       content: '确定要驳回这次补正吗？医生需要重新处理。',
@@ -195,11 +196,17 @@ const Feedback: React.FC = () => {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => {
+        updateFeedbackStatus(selectedFeedback.id, 'rejected');
         message.success('已驳回');
         setDetailVisible(false);
+        setSelectedFeedback(null);
       },
     });
   };
+
+  const currentFeedback = selectedFeedback
+    ? feedbacksList.find((f) => f.id === selectedFeedback.id) || selectedFeedback
+    : null;
 
   return (
     <div className={styles.feedback}>
@@ -259,12 +266,7 @@ const Feedback: React.FC = () => {
       </Row>
 
       <Card className={styles.listCard} bordered={false}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          className={styles.tabs}
-        />
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className={styles.tabs} />
         <Table
           columns={columns}
           dataSource={filteredFeedbacks}
@@ -282,27 +284,30 @@ const Feedback: React.FC = () => {
       <Modal
         title="反馈详情"
         open={detailVisible}
-        onCancel={() => setDetailVisible(false)}
+        onCancel={() => {
+          setDetailVisible(false);
+          setSelectedFeedback(null);
+        }}
         footer={null}
         width={720}
         destroyOnClose
         className={styles.detailModal}
       >
-        {selectedFeedback && (
+        {currentFeedback && (
           <div className={styles.detailContent}>
             <div className={styles.detailHeader}>
               <div className={styles.detailPatient}>
                 <Avatar size={48} icon={<UserOutlined />} className={styles.detailAvatar} />
                 <div>
-                  <h3 className={styles.detailName}>{selectedFeedback.patientName}</h3>
+                  <h3 className={styles.detailName}>{currentFeedback.patientName}</h3>
                   <div className={styles.detailMeta}>
-                    {selectedFeedback.clinicName} · {selectedFeedback.toDoctorName}
+                    {currentFeedback.clinicName} · {currentFeedback.toDoctorName}
                   </div>
                 </div>
               </div>
-              <Tag color={statusConfig[selectedFeedback.status].color} className={styles.statusTag}>
-                {statusConfig[selectedFeedback.status].icon}
-                {statusConfig[selectedFeedback.status].label}
+              <Tag color={statusConfig[currentFeedback.status].color} className={styles.statusTag}>
+                {statusConfig[currentFeedback.status].icon}
+                {statusConfig[currentFeedback.status].label}
               </Tag>
             </div>
 
@@ -311,57 +316,48 @@ const Feedback: React.FC = () => {
                 <div className={styles.blockHeader}>
                   <Avatar size={32} icon={<UserOutlined />} />
                   <div className={styles.blockInfo}>
-                    <span className={styles.blockName}>{selectedFeedback.fromDoctorName}</span>
-                    <span className={styles.blockTime}>{selectedFeedback.createdAt}</span>
+                    <span className={styles.blockName}>{currentFeedback.fromDoctorName}</span>
+                    <span className={styles.blockTime}>{currentFeedback.createdAt}</span>
                   </div>
                   <Tag color="blue">主管反馈</Tag>
                 </div>
-                <div className={styles.blockContent}>
-                  {selectedFeedback.content}
-                </div>
+                <div className={styles.blockContent}>{currentFeedback.content}</div>
               </div>
 
-              {selectedFeedback.reply && (
+              {currentFeedback.reply && (
                 <div className={styles.replyBlock}>
                   <div className={styles.blockHeader}>
                     <Avatar size={32} icon={<UserOutlined />} className={styles.replyAvatar} />
                     <div className={styles.blockInfo}>
-                      <span className={styles.blockName}>{selectedFeedback.toDoctorName}</span>
-                      <span className={styles.blockTime}>{selectedFeedback.replyAt}</span>
+                      <span className={styles.blockName}>{currentFeedback.toDoctorName}</span>
+                      <span className={styles.blockTime}>{currentFeedback.replyAt}</span>
                     </div>
                     <Tag color="green">医生补正</Tag>
                   </div>
-                  <div className={styles.blockContent}>
-                    {selectedFeedback.reply}
-                  </div>
+                  <div className={styles.blockContent}>{currentFeedback.reply}</div>
                 </div>
               )}
 
-              {(selectedFeedback.status === 'pending' || selectedFeedback.status === 'processing') && (
+              {(currentFeedback.status === 'pending' || currentFeedback.status === 'processing') && (
                 <div className={styles.replySection}>
                   <div className={styles.replyTitle}>
                     <SendOutlined /> 回复补正
                   </div>
                   <Form form={replyForm} layout="vertical">
                     <Form.Item name="reply" rules={[{ required: true, message: '请输入回复内容' }]}>
-                      <TextArea
-                        rows={4}
-                        placeholder="请输入补正说明或补充信息..."
-                      />
+                      <TextArea rows={4} placeholder="请输入补正说明或补充信息..." />
                     </Form.Item>
                     <div className={styles.replyActions}>
                       <Button type="primary" onClick={handleReply}>
                         提交补正
                       </Button>
-                      <Button onClick={() => setDetailVisible(false)}>
-                        取消
-                      </Button>
+                      <Button onClick={() => setDetailVisible(false)}>取消</Button>
                     </div>
                   </Form>
                 </div>
               )}
 
-              {selectedFeedback.status === 'processing' && (
+              {currentFeedback.status === 'processing' && (
                 <div className={styles.approvalActions}>
                   <Button type="primary" onClick={handleApprove}>
                     <CheckCircleOutlined /> 确认完成
@@ -379,7 +375,7 @@ const Feedback: React.FC = () => {
                 icon={<FileTextOutlined />}
                 onClick={() => {
                   setDetailVisible(false);
-                  navigate(`/case/${selectedFeedback.patientId}`);
+                  navigate(`/case/${currentFeedback.patientId}`);
                 }}
               >
                 查看完整病例 <ArrowRightOutlined />
@@ -392,4 +388,4 @@ const Feedback: React.FC = () => {
   );
 };
 
-export default Feedback;
+export default FeedbackPage;

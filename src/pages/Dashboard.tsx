@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Card,
   Row,
@@ -9,8 +9,6 @@ import {
   Table,
   Tag,
   Space,
-  Tooltip,
-  Statistic,
   Divider,
 } from 'antd';
 import {
@@ -22,43 +20,181 @@ import {
   ArrowDownOutlined,
   EyeOutlined,
   SearchOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import type { SummaryData, TrendDataItem } from '@/types';
-import { generateSummaryData, generateTrendData } from '@/mock/feedbacks';
+import type { SummaryData, TrendDataItem, PatientStage } from '@/types';
 import { clinics } from '@/mock/clinics';
 import { doctors } from '@/mock/doctors';
+import { patients } from '@/mock/patients';
+import { bondingRecords } from '@/mock/records';
 import styles from './Dashboard.module.css';
 
 const { RangePicker } = DatePicker;
-const { Option } = Select;
+
+const stageOptions: { value: PatientStage; label: string }[] = [
+  { value: 'initial', label: '初期排齐' },
+  { value: 'middle', label: '中期调整' },
+  { value: 'late', label: '后期精细' },
+  { value: 'finishing', label: '精调结束' },
+];
+
+const computeSummary = (
+  filteredPatients: typeof patients,
+  filteredRecords: typeof bondingRecords
+): SummaryData[] => {
+  return clinics.map((clinic) => {
+    const clinicPatients = filteredPatients.filter((p) => p.clinicId === clinic.id);
+    const clinicRecords = filteredRecords.filter((r) =>
+      clinicPatients.some((p) => p.id === r.patientId)
+    );
+    const patientCount = clinicPatients.length;
+    const totalAttachments = clinicRecords.reduce((s, r) => s + r.totalCount, 0);
+    const reattachCount = clinicRecords.reduce((s, r) => s + r.reattachCount, 0);
+    const missingRecords = Math.floor(Math.random() * 3);
+    const reattachRate =
+      totalAttachments > 0
+        ? Math.round((reattachCount / totalAttachments) * 10000) / 100
+        : 0;
+    const isAbnormal = reattachRate > 4 || missingRecords >= 2;
+
+    return {
+      date: dayjs().format('YYYY-MM-DD'),
+      clinicId: clinic.id,
+      clinicName: clinic.name,
+      patientCount,
+      totalAttachments,
+      reattachCount,
+      missingRecords,
+      reattachRate,
+      isAbnormal,
+    };
+  }).filter((s) => s.patientCount > 0);
+};
+
+const computeTrend = (
+  filteredRecords: typeof bondingRecords,
+  days: number
+): TrendDataItem[] => {
+  const data: TrendDataItem[] = [];
+  const today = dayjs('2025-06-20');
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = today.subtract(i, 'day').format('YYYY-MM-DD');
+    const dayRecords = filteredRecords.filter((r) => r.date === date);
+    const patientCount = new Set(dayRecords.map((r) => r.patientId)).size;
+    const totalAttachments = dayRecords.reduce((s, r) => s + r.totalCount, 0);
+    const reattachCount = dayRecords.reduce((s, r) => s + r.reattachCount, 0);
+    const reattachRate =
+      totalAttachments > 0
+        ? Math.round((reattachCount / totalAttachments) * 10000) / 100
+        : 0;
+    data.push({ date, patientCount, totalAttachments, reattachRate });
+  }
+
+  return data;
+};
+
+const getClinicPatient = (clinicId: string) => {
+  return patients.find((p) => p.clinicId === clinicId);
+};
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [summaryData, setSummaryData] = useState<SummaryData[]>([]);
-  const [trendData, setTrendData] = useState<TrendDataItem[]>([]);
   const [selectedClinic, setSelectedClinic] = useState<string>('');
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
-  const [dateRange, setDateRange] = useState<(dayjs.Dayjs | null)[] | null>([
-    dayjs().subtract(6, 'day'),
-    dayjs(),
-  ]);
+  const [selectedStage, setSelectedStage] = useState<string>('');
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [trendDays, setTrendDays] = useState<number>(7);
+  const [appliedFilters, setAppliedFilters] = useState<{
+    clinic: string;
+    doctor: string;
+    stage: string;
+    dateStart: string;
+    dateEnd: string;
+  }>({ clinic: '', doctor: '', stage: '', dateStart: '', dateEnd: '' });
 
-  useEffect(() => {
-    setSummaryData(generateSummaryData());
-    setTrendData(generateTrendData(trendDays));
-  }, [trendDays]);
+  const filteredPatients = useMemo(() => {
+    let result = [...patients];
+    const { clinic, doctor, stage } = appliedFilters;
+    if (clinic) result = result.filter((p) => p.clinicId === clinic);
+    if (doctor) result = result.filter((p) => p.doctorId === doctor);
+    if (stage) result = result.filter((p) => p.stage === stage);
+    return result;
+  }, [appliedFilters]);
+
+  const filteredRecords = useMemo(() => {
+    let result = [...bondingRecords];
+    const { clinic, doctor, dateStart, dateEnd } = appliedFilters;
+    if (clinic) {
+      const clinicPatientIds = patients
+        .filter((p) => p.clinicId === clinic)
+        .map((p) => p.id);
+      result = result.filter((r) => clinicPatientIds.includes(r.patientId));
+    }
+    if (doctor) result = result.filter((r) => r.doctorId === doctor);
+    if (dateStart) result = result.filter((r) => r.date >= dateStart);
+    if (dateEnd) result = result.filter((r) => r.date <= dateEnd);
+    return result;
+  }, [appliedFilters]);
+
+  const summaryData = useMemo(
+    () => computeSummary(filteredPatients, filteredRecords),
+    [filteredPatients, filteredRecords]
+  );
+
+  const trendData = useMemo(
+    () => computeTrend(filteredRecords, trendDays),
+    [filteredRecords, trendDays]
+  );
 
   const totalPatients = summaryData.reduce((sum, item) => sum + item.patientCount, 0);
   const totalAttachments = summaryData.reduce((sum, item) => sum + item.totalAttachments, 0);
   const totalReattach = summaryData.reduce((sum, item) => sum + item.reattachCount, 0);
   const totalMissing = summaryData.reduce((sum, item) => sum + item.missingRecords, 0);
-  const overallReattachRate = totalAttachments > 0
-    ? Math.round((totalReattach / totalAttachments) * 10000) / 100
-    : 0;
+  const overallReattachRate =
+    totalAttachments > 0
+      ? Math.round((totalReattach / totalAttachments) * 10000) / 100
+      : 0;
+
+  const filteredDoctors = useMemo(() => {
+    if (selectedClinic) {
+      return doctors.filter((d) => d.clinicId === selectedClinic && d.id !== 'admin');
+    }
+    return doctors.filter((d) => d.id !== 'admin');
+  }, [selectedClinic]);
+
+  const handleQuery = useCallback(() => {
+    setAppliedFilters({
+      clinic: selectedClinic,
+      doctor: selectedDoctor,
+      stage: selectedStage,
+      dateStart: dateRange?.[0] ? dateRange[0].format('YYYY-MM-DD') : '',
+      dateEnd: dateRange?.[1] ? dateRange[1].format('YYYY-MM-DD') : '',
+    });
+  }, [selectedClinic, selectedDoctor, selectedStage, dateRange]);
+
+  const handleReset = useCallback(() => {
+    setSelectedClinic('');
+    setSelectedDoctor('');
+    setSelectedStage('');
+    setDateRange(null);
+    setAppliedFilters({ clinic: '', doctor: '', stage: '', dateStart: '', dateEnd: '' });
+  }, []);
+
+  const handleClinicChange = (val: string) => {
+    setSelectedClinic(val);
+    if (val) {
+      const clinicDoctorIds = doctors
+        .filter((d) => d.clinicId === val && d.id !== 'admin')
+        .map((d) => d.id);
+      if (selectedDoctor && !clinicDoctorIds.includes(selectedDoctor)) {
+        setSelectedDoctor('');
+      }
+    }
+  };
 
   const columns = [
     {
@@ -67,9 +203,7 @@ const Dashboard: React.FC = () => {
       key: 'clinicName',
       width: 160,
       render: (text: string, record: SummaryData) => (
-        <span className={record.isAbnormal ? styles.abnormalClinic : ''}>
-          {text}
-        </span>
+        <span className={record.isAbnormal ? styles.abnormalClinic : ''}>{text}</span>
       ),
     },
     {
@@ -132,18 +266,22 @@ const Dashboard: React.FC = () => {
       title: '操作',
       key: 'action',
       width: 120,
-      render: () => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => navigate('/case/p1')}
-          >
-            查看病例
-          </Button>
-        </Space>
-      ),
+      render: (_: unknown, record: SummaryData) => {
+        const p = getClinicPatient(record.clinicId);
+        return (
+          <Space size="small">
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => p && navigate(`/case/${p.id}`)}
+              disabled={!p}
+            >
+              查看病例
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -164,7 +302,7 @@ const Dashboard: React.FC = () => {
     },
     xAxis: {
       type: 'category',
-      data: trendData.map(item => item.date.slice(5)),
+      data: trendData.map((item) => item.date.slice(5)),
       axisLine: { lineStyle: { color: '#C9CDD4' } },
       axisLabel: { color: '#4E5969' },
     },
@@ -194,7 +332,7 @@ const Dashboard: React.FC = () => {
       {
         name: '粘接人数',
         type: 'bar',
-        data: trendData.map(item => item.patientCount),
+        data: trendData.map((item) => item.patientCount),
         itemStyle: {
           color: {
             type: 'linear',
@@ -215,7 +353,7 @@ const Dashboard: React.FC = () => {
         name: '重粘率',
         type: 'line',
         yAxisIndex: 1,
-        data: trendData.map(item => item.reattachRate),
+        data: trendData.map((item) => item.reattachRate),
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
@@ -238,35 +376,39 @@ const Dashboard: React.FC = () => {
     ],
   });
 
+  const hasActiveFilter =
+    appliedFilters.clinic || appliedFilters.doctor || appliedFilters.stage || appliedFilters.dateStart || appliedFilters.dateEnd;
+
   return (
     <div className={styles.dashboard}>
       <Card className={styles.filterCard} bordered={false}>
         <Row gutter={16} align="middle">
-          <Col span={8}>
+          <Col span={7}>
             <div className={styles.filterLabel}>日期范围</div>
             <RangePicker
-              value={dateRange as [dayjs.Dayjs, dayjs.Dayjs]}
-              onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null])}
+              value={dateRange as [dayjs.Dayjs, dayjs.Dayjs] | null}
+              onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null)}
               style={{ width: '100%' }}
+              placeholder={['开始日期', '结束日期']}
             />
           </Col>
-          <Col span={5}>
+          <Col span={4}>
             <div className={styles.filterLabel}>分院</div>
             <Select
               placeholder="全部门诊"
               value={selectedClinic || undefined}
-              onChange={setSelectedClinic}
+              onChange={handleClinicChange}
               allowClear
               style={{ width: '100%' }}
             >
-              {clinics.map(clinic => (
-                <Option key={clinic.id} value={clinic.id}>
+              {clinics.map((clinic) => (
+                <Select.Option key={clinic.id} value={clinic.id}>
                   {clinic.name}
-                </Option>
+                </Select.Option>
               ))}
             </Select>
           </Col>
-          <Col span={5}>
+          <Col span={4}>
             <div className={styles.filterLabel}>医生</div>
             <Select
               placeholder="全部医生"
@@ -276,20 +418,41 @@ const Dashboard: React.FC = () => {
               showSearch
               style={{ width: '100%' }}
             >
-              {doctors
-                .filter(d => d.id !== 'admin')
-                .map(doctor => (
-                  <Option key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.title}
-                  </Option>
-                ))}
+              {filteredDoctors.map((doctor) => (
+                <Select.Option key={doctor.id} value={doctor.id}>
+                  {doctor.name} - {doctor.title}
+                </Select.Option>
+              ))}
             </Select>
           </Col>
-          <Col span={6} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <Button type="primary" icon={<SearchOutlined />}>
+          <Col span={4}>
+            <div className={styles.filterLabel}>病例阶段</div>
+            <Select
+              placeholder="全部阶段"
+              value={selectedStage || undefined}
+              onChange={setSelectedStage}
+              allowClear
+              style={{ width: '100%' }}
+            >
+              {stageOptions.map((opt) => (
+                <Select.Option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </Col>
+          <Col span={5} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleQuery}>
               查询
             </Button>
-            <Button icon={<ReloadOutlined />}>重置</Button>
+            <Button icon={<ReloadOutlined />} onClick={handleReset}>
+              重置
+            </Button>
+            {hasActiveFilter && (
+              <Tag icon={<FilterOutlined />} color="blue" className={styles.filterTag}>
+                已筛选
+              </Tag>
+            )}
           </Col>
         </Row>
       </Card>
@@ -306,7 +469,7 @@ const Dashboard: React.FC = () => {
                 <div className={styles.statValue}>{totalPatients}</div>
                 <div className={styles.statTrend}>
                   <ArrowUpOutlined className={styles.trendUp} />
-                  <span>较上周 +12%</span>
+                  <span>共 {filteredPatients.length} 名患者</span>
                 </div>
               </div>
             </div>
@@ -322,8 +485,7 @@ const Dashboard: React.FC = () => {
                 <div className={styles.statLabel}>附件颗数</div>
                 <div className={styles.statValue}>{totalAttachments}</div>
                 <div className={styles.statTrend}>
-                  <ArrowUpOutlined className={styles.trendUp} />
-                  <span>较上周 +8%</span>
+                  <span>来自 {filteredRecords.length} 条记录</span>
                 </div>
               </div>
             </div>
@@ -376,10 +538,18 @@ const Dashboard: React.FC = () => {
             bordered={false}
             extra={
               <Space>
-                <Button size="small" type={trendDays === 7 ? 'primary' : 'default'} onClick={() => setTrendDays(7)}>
+                <Button
+                  size="small"
+                  type={trendDays === 7 ? 'primary' : 'default'}
+                  onClick={() => setTrendDays(7)}
+                >
                   近7天
                 </Button>
-                <Button size="small" type={trendDays === 30 ? 'primary' : 'default'} onClick={() => setTrendDays(30)}>
+                <Button
+                  size="small"
+                  type={trendDays === 30 ? 'primary' : 'default'}
+                  onClick={() => setTrendDays(30)}
+                >
                   近30天
                 </Button>
               </Space>
@@ -391,7 +561,7 @@ const Dashboard: React.FC = () => {
               rowKey="clinicId"
               pagination={false}
               size="middle"
-              rowClassName={(record) => record.isAbnormal ? styles.abnormalRow : ''}
+              rowClassName={(record) => (record.isAbnormal ? styles.abnormalRow : '')}
             />
           </Card>
         </Col>
@@ -403,12 +573,21 @@ const Dashboard: React.FC = () => {
               <div className={styles.legendItem}>
                 <span className={styles.legendDotBlue}></span>
                 <span>日均粘接</span>
-                <span className={styles.legendValue}>{Math.round(totalPatients / 7)}人/天</span>
+                <span className={styles.legendValue}>
+                  {trendData.length > 0
+                    ? Math.round(
+                        trendData.reduce((s, d) => s + d.patientCount, 0) / trendData.length
+                      )
+                    : 0}
+                  人/天
+                </span>
               </div>
               <div className={styles.legendItem}>
                 <span className={styles.legendDotRed}></span>
                 <span>平均重粘率</span>
-                <span className={`${styles.legendValue} ${styles.textRed}`}>{overallReattachRate}%</span>
+                <span className={`${styles.legendValue} ${styles.textRed}`}>
+                  {overallReattachRate}%
+                </span>
               </div>
             </div>
           </Card>

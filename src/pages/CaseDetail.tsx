@@ -32,10 +32,13 @@ import {
   EyeOutlined,
   SmileOutlined,
 } from '@ant-design/icons';
-import type { BondingRecord, Patient, BondingType } from '@/types';
+import type { BondingRecord, Patient, BondingType, Feedback } from '@/types';
 import { getPatientById, stageLabels } from '@/mock/patients';
 import { getRecordsByPatientId } from '@/mock/records';
-import { doctors } from '@/mock/doctors';
+import { doctors, getDoctorById } from '@/mock/doctors';
+import { clinics } from '@/mock/clinics';
+import { useFeedbackStore } from '@/store/feedbackStore';
+import dayjs from 'dayjs';
 import styles from './CaseDetail.module.css';
 
 const { Option } = Select;
@@ -69,6 +72,7 @@ const photoAngleLabels: Record<string, string> = {
 const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const addFeedback = useFeedbackStore((s) => s.addFeedback);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [records, setRecords] = useState<BondingRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<BondingRecord | null>(null);
@@ -91,6 +95,28 @@ const CaseDetail: React.FC = () => {
 
   const handleSubmitFeedback = () => {
     form.validateFields().then((values) => {
+      const toDoctor = getDoctorById(values.toDoctorId);
+      if (!toDoctor || !patient || !selectedRecord) return;
+
+      const deadlineDays = values.deadline ? parseInt(values.deadline, 10) : 7;
+      const feedback: Feedback = {
+        id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        recordId: selectedRecord.id,
+        patientId: patient.id,
+        patientName: patient.name,
+        fromDoctorId: 'admin',
+        fromDoctorName: '质控主管',
+        toDoctorId: values.toDoctorId,
+        toDoctorName: toDoctor.name,
+        content: values.content,
+        status: 'pending',
+        createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        deadline: dayjs().add(deadlineDays, 'day').format('YYYY-MM-DD'),
+        clinicId: patient.clinicId,
+        clinicName: patient.clinicName,
+      };
+
+      addFeedback(feedback);
       message.success('反馈已发送');
       setFeedbackModalVisible(false);
       form.resetFields();
@@ -103,9 +129,7 @@ const CaseDetail: React.FC = () => {
       dataIndex: 'toothPosition',
       key: 'toothPosition',
       width: 100,
-      render: (val: string) => (
-        <span className={styles.toothPosition}>{val}</span>
-      ),
+      render: (val: string) => <span className={styles.toothPosition}>{val}</span>,
     },
     {
       title: '附件形态',
@@ -197,7 +221,7 @@ const CaseDetail: React.FC = () => {
             <Timeline
               mode="left"
               className={styles.timeline}
-              items={records.map((record, index) => ({
+              items={records.map((record) => ({
                 color: typeColors[record.type],
                 dot: typeIcons[record.type],
                 children: (
@@ -214,9 +238,7 @@ const CaseDetail: React.FC = () => {
                       </span>
                     </div>
                     <div className={styles.timelineContent}>
-                      <div className={styles.timelineDoctor}>
-                        操作医生：{record.doctorName}
-                      </div>
+                      <div className={styles.timelineDoctor}>操作医生：{record.doctorName}</div>
                       {record.totalCount > 0 && (
                         <div className={styles.timelineStat}>
                           {record.type === 'reattach' ? (
@@ -326,7 +348,7 @@ const CaseDetail: React.FC = () => {
                   <CameraOutlined /> 口内照片
                 </h4>
                 <div className={styles.photoGrid}>
-                  {selectedRecord.photos.map(photo => (
+                  {selectedRecord.photos.map((photo) => (
                     <div key={photo.id} className={styles.photoItem}>
                       <div className={styles.photoWrapper}>
                         <Image
@@ -368,7 +390,7 @@ const CaseDetail: React.FC = () => {
         width={600}
         destroyOnClose
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" initialValues={{ toDoctorId: patient?.doctorId }}>
           <Form.Item
             name="toDoctorId"
             label="分派给医生"
@@ -376,10 +398,10 @@ const CaseDetail: React.FC = () => {
           >
             <Select placeholder="请选择需要补正的医生">
               {doctors
-                .filter(d => d.id !== 'admin')
-                .map(doctor => (
+                .filter((d) => d.id !== 'admin')
+                .map((doctor) => (
                   <Option key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.title}
+                    {doctor.name} - {doctor.title} ({clinics.find((c) => c.id === doctor.clinicId)?.name || ''})
                   </Option>
                 ))}
             </Select>
@@ -394,7 +416,7 @@ const CaseDetail: React.FC = () => {
               placeholder="请描述发现的问题，例如：牙位描述不清、照片缺少咬合面、重粘原因未说明等"
             />
           </Form.Item>
-          <Form.Item name="deadline" label="要求完成期限">
+          <Form.Item name="deadline" label="要求完成期限" initialValue="3">
             <Select placeholder="请选择">
               <Option value="1">1天内</Option>
               <Option value="3">3天内</Option>
