@@ -28,7 +28,7 @@ import {
   CalendarOutlined,
   SendOutlined,
 } from '@ant-design/icons';
-import type { Feedback, FeedbackStatus } from '@/types';
+import type { Feedback, FeedbackStatus, BondingType } from '@/types';
 import { useFeedbackStore } from '@/store/feedbackStore';
 import styles from './Feedback.module.css';
 import dayjs from 'dayjs';
@@ -40,6 +40,18 @@ const statusConfig: Record<FeedbackStatus, { label: string; color: string; icon:
   processing: { label: '处理中', color: 'blue', icon: <SyncOutlined spin /> },
   completed: { label: '已完成', color: 'green', icon: <CheckCircleOutlined /> },
   rejected: { label: '已驳回', color: 'red', icon: <CloseCircleOutlined /> },
+};
+
+const typeLabels: Record<BondingType, string> = {
+  initial: '初次粘接',
+  reattach: '重新粘接',
+  checkup: '复诊检查',
+};
+
+const typeColors: Record<BondingType, string> = {
+  initial: 'blue',
+  reattach: 'orange',
+  checkup: 'green',
 };
 
 const FeedbackPage: React.FC = () => {
@@ -79,6 +91,20 @@ const FeedbackPage: React.FC = () => {
             <div className={styles.patientName}>{record.patientName}</div>
             <div className={styles.clinicName}>{record.clinicName}</div>
           </div>
+        </div>
+      ),
+    },
+    {
+      title: '关联记录',
+      dataIndex: 'recordType',
+      key: 'recordType',
+      width: 160,
+      render: (_: unknown, record: Feedback) => (
+        <div className={styles.recordCell}>
+          <Tag color={typeColors[record.recordType]}>
+            {typeLabels[record.recordType]}
+          </Tag>
+          <span className={styles.recordDate}>{record.recordDate}</span>
         </div>
       ),
     },
@@ -302,6 +328,14 @@ const FeedbackPage: React.FC = () => {
                   <h3 className={styles.detailName}>{currentFeedback.patientName}</h3>
                   <div className={styles.detailMeta}>
                     {currentFeedback.clinicName} · {currentFeedback.toDoctorName}
+                  </div>
+                  <div className={styles.detailRecord}>
+                    <Tag color={typeColors[currentFeedback.recordType]}>
+                      {typeLabels[currentFeedback.recordType]}
+                    </Tag>
+                    <span className={styles.detailRecordDate}>
+                      {currentFeedback.recordDate}
+                    </span>
                   </div>
                 </div>
               </div>

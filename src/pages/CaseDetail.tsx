@@ -102,6 +102,8 @@ const CaseDetail: React.FC = () => {
       const feedback: Feedback = {
         id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         recordId: selectedRecord.id,
+        recordType: selectedRecord.type,
+        recordDate: selectedRecord.date,
         patientId: patient.id,
         patientName: patient.name,
         fromDoctorId: 'admin',

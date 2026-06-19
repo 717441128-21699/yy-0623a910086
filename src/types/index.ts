@@ -67,6 +67,8 @@ export interface BondingRecord {
 export interface Feedback {
   id: string;
   recordId: string;
+  recordType: BondingType;
+  recordDate: string;
   patientId: string;
   patientName: string;
   fromDoctorId: string;

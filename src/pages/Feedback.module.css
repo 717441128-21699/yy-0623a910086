@@ -105,6 +105,18 @@
   line-height: 1.5;
 }
 
+.recordCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recordDate {
+  font-size: 12px;
+  color: #86909C;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
 .timeText {
   font-size: 12px;
   color: #86909C;
@@ -157,6 +169,19 @@
   font-size: 12px;
   color: #86909C;
   margin-top: 2px;
+}
+
+.detailRecord {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.detailRecordDate {
+  font-size: 12px;
+  color: #4E5969;
+  font-family: 'SF Mono', Monaco, monospace;
 }
 
 .statusTag {

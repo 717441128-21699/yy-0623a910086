@@ -50,10 +50,11 @@ const computeSummary = (
     const clinicRecords = filteredRecords.filter((r) =>
       clinicPatients.some((p) => p.id === r.patientId)
     );
-    const patientCount = clinicPatients.length;
+    const activePatientIds = new Set(clinicRecords.map((r) => r.patientId));
+    const patientCount = activePatientIds.size;
     const totalAttachments = clinicRecords.reduce((s, r) => s + r.totalCount, 0);
     const reattachCount = clinicRecords.reduce((s, r) => s + r.reattachCount, 0);
-    const missingRecords = Math.floor(Math.random() * 3);
+    const missingRecords = patientCount > 0 ? Math.floor(Math.random() * 2) : 0;
     const reattachRate =
       totalAttachments > 0
         ? Math.round((reattachCount / totalAttachments) * 10000) / 100
@@ -71,7 +72,7 @@ const computeSummary = (
       reattachRate,
       isAbnormal,
     };
-  }).filter((s) => s.patientCount > 0);
+  }).filter((s) => s.patientCount > 0 || s.totalAttachments > 0);
 };
 
 const computeTrend = (
@@ -95,10 +96,6 @@ const computeTrend = (
   }
 
   return data;
-};
-
-const getClinicPatient = (clinicId: string) => {
-  return patients.find((p) => p.clinicId === clinicId);
 };
 
 const Dashboard: React.FC = () => {
@@ -127,18 +124,14 @@ const Dashboard: React.FC = () => {
 
   const filteredRecords = useMemo(() => {
     let result = [...bondingRecords];
-    const { clinic, doctor, dateStart, dateEnd } = appliedFilters;
-    if (clinic) {
-      const clinicPatientIds = patients
-        .filter((p) => p.clinicId === clinic)
-        .map((p) => p.id);
-      result = result.filter((r) => clinicPatientIds.includes(r.patientId));
-    }
+    const { doctor, dateStart, dateEnd } = appliedFilters;
+    const filteredPatientIds = filteredPatients.map((p) => p.id);
+    result = result.filter((r) => filteredPatientIds.includes(r.patientId));
     if (doctor) result = result.filter((r) => r.doctorId === doctor);
     if (dateStart) result = result.filter((r) => r.date >= dateStart);
     if (dateEnd) result = result.filter((r) => r.date <= dateEnd);
     return result;
-  }, [appliedFilters]);
+  }, [appliedFilters, filteredPatients]);
 
   const summaryData = useMemo(
     () => computeSummary(filteredPatients, filteredRecords),
@@ -267,15 +260,15 @@ const Dashboard: React.FC = () => {
       key: 'action',
       width: 120,
       render: (_: unknown, record: SummaryData) => {
-        const p = getClinicPatient(record.clinicId);
+        const targetPatient = filteredPatients.find((p) => p.clinicId === record.clinicId);
         return (
           <Space size="small">
             <Button
               type="link"
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => p && navigate(`/case/${p.id}`)}
-              disabled={!p}
+              onClick={() => targetPatient && navigate(`/case/${targetPatient.id}`)}
+              disabled={!targetPatient}
             >
               查看病例
             </Button>

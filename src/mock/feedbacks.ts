@@ -5,6 +5,8 @@ export const feedbacks: Feedback[] = [
   {
     id: 'f1',
     recordId: 'r7',
+    recordType: 'reattach',
+    recordDate: '2025-06-12',
     patientId: 'p3',
     patientName: '陈思远',
     fromDoctorId: 'admin',
@@ -21,6 +23,8 @@ export const feedbacks: Feedback[] = [
   {
     id: 'f2',
     recordId: 'r10',
+    recordType: 'reattach',
+    recordDate: '2025-06-22',
     patientId: 'p5',
     patientName: '刘子豪',
     fromDoctorId: 'admin',
@@ -39,6 +43,8 @@ export const feedbacks: Feedback[] = [
   {
     id: 'f3',
     recordId: 'r12',
+    recordType: 'reattach',
+    recordDate: '2025-05-15',
     patientId: 'p9',
     patientName: '郑嘉豪',
     fromDoctorId: 'admin',
@@ -55,6 +61,8 @@ export const feedbacks: Feedback[] = [
   {
     id: 'f4',
     recordId: 'r2',
+    recordType: 'reattach',
+    recordDate: '2025-07-02',
     patientId: 'p1',
     patientName: '王小明',
     fromDoctorId: 'admin',
@@ -73,6 +81,8 @@ export const feedbacks: Feedback[] = [
   {
     id: 'f5',
     recordId: 'r4',
+    recordType: 'initial',
+    recordDate: '2025-06-18',
     patientId: 'p2',
     patientName: '李雨桐',
     fromDoctorId: 'admin',
@@ -91,6 +101,8 @@ export const feedbacks: Feedback[] = [
   {
     id: 'f6',
     recordId: 'r6',
+    recordType: 'reattach',
+    recordDate: '2025-05-25',
     patientId: 'p3',
     patientName: '陈思远',
     fromDoctorId: 'admin',
