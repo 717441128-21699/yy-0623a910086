@@ -1,0 +1,279 @@
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.statsRow {
+  margin-top: 0;
+}
+
+.statCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.statCard:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.statContent {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.statIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.statInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #86909C;
+  margin-bottom: 2px;
+}
+
+.statValue {
+  font-size: 26px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  line-height: 1.2;
+}
+
+.listCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.tabs {
+  margin-bottom: 0;
+}
+
+.tabs :global(.ant-tabs-nav) {
+  margin-bottom: 16px;
+}
+
+.table {
+  margin-top: 0;
+}
+
+.patientCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.patientAvatar {
+  background: linear-gradient(135deg, #165DFF, #4080FF) !important;
+  flex-shrink: 0;
+}
+
+.patientInfo {
+  min-width: 0;
+}
+
+.patientName {
+  font-weight: 500;
+  color: #1D2129;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.clinicName {
+  font-size: 12px;
+  color: #86909C;
+}
+
+.contentText {
+  color: #4E5969;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.timeText {
+  font-size: 12px;
+  color: #86909C;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.overdueText {
+  color: #F53F3F;
+  font-weight: 500;
+}
+
+.detailModal {
+  .ant-modal-body {
+    padding: 0;
+  }
+}
+
+.detailContent {
+  padding: 0;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #F2F3F5;
+}
+
+.detailPatient {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detailAvatar {
+  background: linear-gradient(135deg, #165DFF, #4080FF) !important;
+}
+
+.detailName {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1D2129;
+}
+
+.detailMeta {
+  font-size: 12px;
+  color: #86909C;
+  margin-top: 2px;
+}
+
+.statusTag {
+  margin: 0 !important;
+}
+
+.detailBody {
+  padding: 20px 24px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.feedbackBlock {
+  margin-bottom: 16px;
+}
+
+.replyBlock {
+  margin-bottom: 16px;
+  margin-left: 24px;
+  position: relative;
+}
+
+.blockHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.blockInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.blockName {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1D2129;
+  margin-right: 8px;
+}
+
+.blockTime {
+  font-size: 12px;
+  color: #86909C;
+  margin-left: 8px;
+}
+
+.blockContent {
+  background: #F7F8FA;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #4E5969;
+  line-height: 1.6;
+  margin-left: 42px;
+}
+
+.replyAvatar {
+  background: linear-gradient(135deg, #00B42A, #23C343) !important;
+}
+
+.replySection {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed #E5E6EB;
+}
+
+.replyTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1D2129;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.replyActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.approvalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 16px;
+  border-top: 1px dashed #E5E6EB;
+  margin-top: 16px;
+}
+
+.detailFooter {
+  padding: 14px 24px;
+  border-top: 1px solid #F2F3F5;
+  background: #FAFBFC;
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.statCard {
+  animation: slideUp 0.5s ease-out backwards;
+}
+
+.statCard:nth-child(1) { animation-delay: 0.05s; }
+.statCard:nth-child(2) { animation-delay: 0.1s; }
+.statCard:nth-child(3) { animation-delay: 0.15s; }
+.statCard:nth-child(4) { animation-delay: 0.2s; }

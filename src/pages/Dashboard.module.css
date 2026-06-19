@@ -1,0 +1,206 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.filterLabel {
+  font-size: 13px;
+  color: #4E5969;
+  margin-bottom: 6px;
+}
+
+.statsRow {
+  margin-top: 0;
+}
+
+.statCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.statCard:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.statContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.statIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.statInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #86909C;
+  margin-bottom: 4px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1D2129;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.statTrend {
+  font-size: 12px;
+  color: #86909C;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trendUp {
+  color: #00B42A;
+}
+
+.trendDown {
+  color: #F53F3F;
+}
+
+.abnormalValue {
+  color: #F53F3F !important;
+}
+
+.missingHint {
+  color: #FF7D00;
+  font-weight: 500;
+}
+
+.contentRow {
+  margin-top: 0;
+}
+
+.tableCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.chartCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.abnormalRow {
+  background: #FFF1F0 !important;
+}
+
+.abnormalRow:hover td {
+  background: #FFECE8 !important;
+}
+
+.abnormalClinic {
+  color: #F53F3F;
+  font-weight: 600;
+}
+
+.abnormalNum {
+  color: #F53F3F;
+  font-weight: 600;
+}
+
+.numCell {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  font-weight: 500;
+}
+
+.warningIcon {
+  color: #F53F3F;
+  margin-right: 4px;
+}
+
+.rateTag {
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.legendInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4E5969;
+}
+
+.legendDotBlue {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #165DFF;
+}
+
+.legendDotRed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #F53F3F;
+}
+
+.legendValue {
+  margin-left: auto;
+  font-weight: 600;
+  color: #1D2129;
+  font-family: 'SF Mono', monospace;
+}
+
+.textRed {
+  color: #F53F3F !important;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.statCard:nth-child(1) {
+  animation: slideUp 0.5s ease-out;
+}
+
+.statCard:nth-child(2) {
+  animation: slideUp 0.5s ease-out 0.1s backwards;
+}
+
+.statCard:nth-child(3) {
+  animation: slideUp 0.5s ease-out 0.2s backwards;
+}
+
+.statCard:nth-child(4) {
+  animation: slideUp 0.5s ease-out 0.3s backwards;
+}

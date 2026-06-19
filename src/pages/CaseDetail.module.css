@@ -1,0 +1,347 @@
+.caseDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+}
+
+.backBtn {
+  padding-left: 0;
+  font-size: 14px;
+}
+
+.patientCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.patientInfo {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.patientAvatar {
+  background: linear-gradient(135deg, #165DFF, #4080FF) !important;
+  flex-shrink: 0;
+}
+
+.patientMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.patientNameRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.patientName {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1D2129;
+  margin: 0;
+}
+
+.patientNo {
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.patientMeta {
+  font-size: 13px;
+  color: #4E5969;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.metaItem b {
+  color: #1D2129;
+  font-weight: 600;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.warningText {
+  color: #F53F3F !important;
+}
+
+.warningText b {
+  color: #F53F3F !important;
+}
+
+.patientActions {
+  flex-shrink: 0;
+}
+
+.contentWrapper {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.timelineSection {
+  width: 360px;
+  flex-shrink: 0;
+}
+
+.timelineCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  position: sticky;
+  top: 88px;
+}
+
+.timeline {
+  padding: 8px 0;
+}
+
+.timelineItem {
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+  margin-left: -8px;
+}
+
+.timelineItem:hover {
+  background: #F2F3F5;
+}
+
+.activeItem {
+  background: #E8F3FF !important;
+  border-left: 3px solid #165DFF;
+  padding-left: 9px;
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.typeTag {
+  margin: 0 !important;
+}
+
+.timelineDate {
+  font-size: 12px;
+  color: #86909C;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timelineContent {
+  font-size: 13px;
+  color: #4E5969;
+}
+
+.timelineDoctor {
+  margin-bottom: 2px;
+}
+
+.timelineStat {
+  color: #165DFF;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.timelineRemark {
+  color: #86909C;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.detailSection {
+  flex: 1;
+  min-width: 0;
+}
+
+.detailCard {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.detailTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+}
+
+.infoBlock {
+  margin-bottom: 0;
+}
+
+.infoTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1D2129;
+  margin: 0 0 12px 0;
+}
+
+.infoList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.infoLabel {
+  color: #86909C;
+  font-size: 13px;
+  width: 70px;
+  flex-shrink: 0;
+}
+
+.infoValue {
+  color: #1D2129;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.remarkBox {
+  background: #F7F8FA;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 13px;
+  color: #4E5969;
+  line-height: 1.6;
+  min-height: 60px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1D2129;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.itemsTable {
+  margin-bottom: 0;
+}
+
+.toothPosition {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-weight: 600;
+  color: #165DFF;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.photoItem {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #F7F8FA;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.photoItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.photoWrapper {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #E8F3FF;
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoLabel {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #4E5969;
+  background: white;
+  border-top: 1px solid #F2F3F5;
+}
+
+.photoEye {
+  color: #86909C;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.photoEye:hover {
+  color: #165DFF;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 80px 0;
+  color: #86909C;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #C9CDD4;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #86909C;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.timelineItem {
+  animation: slideInLeft 0.3s ease-out backwards;
+}
+
+.timelineItem:nth-child(1) { animation-delay: 0.05s; }
+.timelineItem:nth-child(2) { animation-delay: 0.1s; }
+.timelineItem:nth-child(3) { animation-delay: 0.15s; }
+.timelineItem:nth-child(4) { animation-delay: 0.2s; }
+.timelineItem:nth-child(5) { animation-delay: 0.25s; }
